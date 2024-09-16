@@ -1,0 +1,104 @@
+print("hello")
+
+local HttpService = game:GetService("HttpService")
+local gPlayers = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local plr = gPlayers.LocalPlayer
+
+local function run()
+
+    -- Checks if a part has a ProximityPrompt with the given objectText
+    local function partMatchesProximityPrompt(part, objectText)
+        local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+        return prompt and prompt.ObjectText == objectText
+    end
+
+    local name = plr.Name
+    local userId = plr.UserId
+    local serverId = game.JobId
+
+    local httprequest = (syn and syn.request)
+        or (http and http.request)
+        or http_request
+        or (delta and delta.request)
+        or request
+
+    -- Function to trigger the ProximityPrompt multiple times
+    local function getitem(prompt)
+        for i = 1, 20 do
+            wait(0.5)
+            fireproximityprompt(prompt)
+        end
+    end
+
+    -- Function to teleport the player to another game server
+    local function teleport()
+        local placeId, jobId = game.PlaceId, game.JobId
+
+        -- Makes a request to fetch the list of public servers
+        local req = httprequest({Url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100", placeId)})
+        local body = HttpService:JSONDecode(req.Body)
+        local servers = {}
+
+        if body and body.data then
+            for i, v in next, body.data do
+                if type(v) == "table" and tonumber(v.playing) and tonumber(v.maxPlayers) and v.playing < v.maxPlayers then
+                    table.insert(servers, v.id)
+                end
+            end
+        end
+
+        -- If there are available servers, teleport the player
+        if #servers > 0 then
+            TeleportService:TeleportToPlaceInstance(placeId, servers[math.random(1, #servers)], gPlayers.LocalPlayer)
+        else
+            print("No available servers found.")
+        end
+    end
+
+    -- Function to find a model with a ProximityPrompt matching the given objectText
+    local function findMatchingModelWithPrompt(objectText)
+        for _, model in pairs(workspace.Game.Entities.ItemPickup:GetChildren()) do
+            if model:IsA("Model") then
+                for _, part in pairs(model:GetDescendants()) do
+                    if part:IsA("Part") or part:IsA("MeshPart") then
+                        if partMatchesProximityPrompt(part, objectText) then
+                            return part
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Main logic for checking the humanoid's RootPart and prompt interaction
+    local humanoidRootPart = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    local teleportPosition = Vector3.new(0, 0, 0) -- Replace with actual target position
+
+    -- Find the prompt before attempting to interact with it
+    local promptPart = findMatchingModelWithPrompt("Money Printer") -- Replace "Money Printer" with actual ObjectText
+    local prompt = promptPart and promptPart:FindFirstChildOfClass("ProximityPrompt")
+
+    if humanoidRootPart and prompt then
+        -- Moves the player to a specific position and triggers the ProximityPrompt
+        humanoidRootPart.CFrame = CFrame.new(teleportPosition)
+        getitem(prompt)
+    else
+        print("Humanoid RootPart or matching ProximityPrompt not found.")
+    end
+
+    wait(5)
+
+    -- Send a message and teleport the player
+    print("Teleporting...")
+    teleport()
+
+    -- Handle the case where no matching part was found
+    if not prompt then
+        print("Matching model or part with 'Money Printer' ProximityPrompt not found")
+    end
+
+    wait(0.1)
+end
+
+run()
